@@ -1,24 +1,45 @@
+import { axios } from "axios";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import Field from "../common/Field";
 import { useAuth } from "../../hooks/useAuth";
+import Field from "../common/Field";
 
 export default function LoginForm() {
   const navigate = useNavigate();
 
-  const {setAuth} = useAuth();
+  const { setAuth } = useAuth();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setError,
   } = useForm();
 
-  const submitForm = (formData) => {
-    console.log(formData);
-    const user = {...formData};
-    setAuth({user});
-    navigate("/");
+  const submitForm = async (formData) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_SERVER_BASE_URL}/auth/login`,
+        formData
+      );
+
+      if (response.status == 200) {
+        const { token, user } = response.data;
+        if (token) {
+          const authToken = token.token;
+          const refreshToken = token.refreshToken;
+          console.log(`Login time auth token: ${authToken}`);
+          setAuth({ user, authToken, refreshToken });
+          navigate("/");
+        }
+      }
+    } catch (error) {
+      console.log(error);
+      setError("root.random", {
+        type: "random",
+        message: `User with email ${formData.email} not found`,
+      });
+    }
   };
 
   return (
@@ -39,6 +60,8 @@ export default function LoginForm() {
           id="email"
         />
       </Field>
+
+      <p>{errors?.root?.random?.message}</p>
 
       <Field label="Password" error={errors.password}>
         <input
